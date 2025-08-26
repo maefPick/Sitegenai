@@ -9,11 +9,37 @@ const downloadBtn = document.getElementById('downloadBtn');
 const statusDiv = document.getElementById('status');
 const previewFrame = document.getElementById('preview');
 
-// Choisissez ici le modèle et l'API (OpenAI par défaut)
-const API_TYPE = 'openai'; // 'openai' ou 'huggingface'
+
+// Choisissez ici le modèle et l'API (OpenAI ou Mistral)
+// API_TYPE : 'openai' ou 'mistral'
+const API_TYPE = 'mistral'; // 'openai' ou 'mistral'
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_MODEL = 'gpt-3.5-turbo';
-// Pour HuggingFace, adapter la requête si besoin
+const OPENAI_MODEL = 'gpt-4.1-mini';
+const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_MODEL = 'mistral-medium';
+// Appel API Mistral
+async function callMistral(apiKey, prompt) {
+	const body = {
+		model: MISTRAL_MODEL,
+		messages: [
+			{ role: 'system', content: 'Tu es un assistant qui génère des sites web HTML complets.' },
+			{ role: 'user', content: prompt }
+		],
+		max_tokens: 2048,
+		temperature: 0.7
+	};
+	const res = await fetch(MISTRAL_URL, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${apiKey}`
+		},
+		body: JSON.stringify(body)
+	});
+	if (!res.ok) throw new Error('Erreur API Mistral : ' + res.status);
+	const data = await res.json();
+	return data.choices[0].message.content;
+}
 
 function showStatus(msg, isError = false) {
 	statusDiv.textContent = msg;
@@ -65,6 +91,8 @@ async function generateSite() {
 		let htmlCode = '';
 		if (API_TYPE === 'openai') {
 			htmlCode = await callOpenAI(apiKey, buildPrompt(userPrompt));
+		} else if (API_TYPE === 'mistral') {
+			htmlCode = await callMistral(apiKey, buildPrompt(userPrompt));
 		} else {
 			throw new Error('API non supportée dans ce script.');
 		}
