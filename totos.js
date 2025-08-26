@@ -1,27 +1,3 @@
-apiTypeSelect.addEventListener('change', function() {
-	const api = apiTypeSelect.value;
-	for (const opt of modelSelect.options) {
-		if (api === 'openai' && opt.value.startsWith('gpt-')) {
-			opt.style.display = '';
-		} else if (api === 'mistral' && opt.value.startsWith('mistral-')) {
-			opt.style.display = '';
-		} else {
-			opt.style.display = 'none';
-		}
-	}
-	// Sélectionne le premier modèle visible
-	for (const opt of modelSelect.options) {
-		if (opt.style.display !== 'none') {
-			modelSelect.value = opt.value;
-			break;
-		}
-	}
-});
-// Initialisation pour masquer les modèles non pertinents au chargement
-window.addEventListener('DOMContentLoaded', () => {
-	apiTypeSelect.dispatchEvent(new Event('change'));
-});
-
 // toto.js - Générateur de site HTML via LLM (API OpenAI ou HuggingFace)
 // Documentation : voir index.html
 
@@ -37,29 +13,6 @@ const apiTypeSelect = document.getElementById('apiType');
 const modelSelect = document.getElementById('modelSelect');
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
-// Appel API Mistral
-async function callMistral(apiKey, prompt) {
-	const body = {
-		model: MISTRAL_MODEL,
-		messages: [
-			{ role: 'system', content: 'Tu es un assistant qui génère des sites web HTML complets.' },
-			{ role: 'user', content: prompt }
-		],
-		max_tokens: 2048,
-		temperature: 0.7
-	};
-	const res = await fetch(MISTRAL_URL, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${apiKey}`
-		},
-		body: JSON.stringify(body)
-	});
-	if (!res.ok) throw new Error('Erreur API Mistral : ' + res.status);
-	const data = await res.json();
-	return data.choices[0].message.content;
-}
 
 function showStatus(msg, isError = false) {
 	statusDiv.textContent = msg;
@@ -73,7 +26,7 @@ function buildPrompt(userPrompt) {
 
 async function callOpenAI(apiKey, prompt) {
 	const body = {
-		model: OPENAI_MODEL,
+		model: modelSelect.value,
 		messages: [
 			{ role: 'system', content: 'Tu es un assistant qui génère des sites web HTML complets.' },
 			{ role: 'user', content: prompt }
@@ -95,11 +48,34 @@ async function callOpenAI(apiKey, prompt) {
 	return data.choices[0].message.content;
 }
 
-// Pour HuggingFace, il faudrait adapter la fonction (voir doc HuggingFace Inference API)
+// Appel API Mistral
+async function callMistral(apiKey, prompt) {
+	const body = {
+		model: modelSelect.value,
+		messages: [
+			{ role: 'system', content: 'Tu es un assistant qui génère des sites web HTML complets.' },
+			{ role: 'user', content: prompt }
+		],
+		max_tokens: 2048,
+		temperature: 0.7
+	};
+	const res = await fetch(MISTRAL_URL, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${apiKey}`
+		},
+		body: JSON.stringify(body)
+	});
+	if (!res.ok) throw new Error('Erreur API Mistral : ' + res.status);
+	const data = await res.json();
+	return data.choices[0].message.content;
+}
 
 async function generateSite() {
 	const apiKey = apiKeyInput.value.trim();
 	const userPrompt = promptInput.value.trim();
+	const apiType = apiTypeSelect.value;
 	if (!apiKey || !userPrompt) {
 		showStatus('Veuillez saisir la clé API et la description.');
 		return;
@@ -109,9 +85,9 @@ async function generateSite() {
 	downloadBtn.style.display = 'none';
 	try {
 		let htmlCode = '';
-		if (API_TYPE === 'openai') {
+		if (apiType === 'openai') {
 			htmlCode = await callOpenAI(apiKey, buildPrompt(userPrompt));
-		} else if (API_TYPE === 'mistral') {
+		} else if (apiType === 'mistral') {
 			htmlCode = await callMistral(apiKey, buildPrompt(userPrompt));
 		} else {
 			throw new Error('API non supportée dans ce script.');
@@ -146,6 +122,31 @@ function downloadHTML() {
 	}, 100);
 }
 
+// Optionnel : adapter dynamiquement la liste des modèles selon l'API sélectionnée
+apiTypeSelect.addEventListener('change', function() {
+	const api = apiTypeSelect.value;
+	for (const opt of modelSelect.options) {
+		if (api === 'openai' && opt.value.startsWith('gpt-')) {
+			opt.style.display = '';
+		} else if (api === 'mistral' && opt.value.startsWith('mistral-')) {
+			opt.style.display = '';
+		} else {
+			opt.style.display = 'none';
+		}
+	}
+	// Sélectionne le premier modèle visible
+	for (const opt of modelSelect.options) {
+		if (opt.style.display !== 'none') {
+			modelSelect.value = opt.value;
+			break;
+		}
+	}
+});
+
+// Initialisation pour masquer les modèles non pertinents au chargement
+window.addEventListener('DOMContentLoaded', () => {
+	apiTypeSelect.dispatchEvent(new Event('change'));
+});
+
 generateBtn.addEventListener('click', generateSite);
 downloadBtn.addEventListener('click', downloadHTML);
-
